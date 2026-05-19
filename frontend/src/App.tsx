@@ -5,6 +5,7 @@ import Dashboard from "./pages/Dashboard"
 
 import Donors from "./pages/Donors"
 import Requests from "./pages/Requests"
+import Inventory from "./pages/Inventory"
 
 function App() {
   return (
@@ -16,7 +17,7 @@ function App() {
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<Dashboard />} />
           <Route path="donors" element={<Donors />} />
-          <Route path="inventory" element={<div className="p-4">Inventory Management Coming Soon</div>} />
+          <Route path="inventory" element={<Inventory />} />
           <Route path="requests" element={<Requests />} />
           <Route path="settings" element={<div className="p-4">Settings Coming Soon</div>} />
         </Route>

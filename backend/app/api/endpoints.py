@@ -4,8 +4,8 @@ from sqlalchemy import text
 from typing import List
 
 from app.database.session import get_db
-from app.models.domain import User, Role
-from app.schemas.domain import UserOut, DashboardStats, BloodStock, LoginRequest, Token
+from app.models.domain import User, Role, BloodInventory
+from app.schemas.domain import UserOut, DashboardStats, BloodStock, LoginRequest, Token, BloodInventoryOut, BloodInventoryUpdate
 from app.config.settings import settings
 
 # Dummy auth tools for demonstration
@@ -68,3 +68,19 @@ def get_blood_stock(db: Session = Depends(get_db)):
         return [{"blood_group": row[0], "total_units": row[1], "total_ml": row[2]} for row in result]
     except Exception as e:
         return []
+
+@router.get("/inventory/units", response_model=List[BloodInventoryOut])
+def get_inventory_units(db: Session = Depends(get_db)):
+    units = db.query(BloodInventory).all()
+    return units
+
+@router.patch("/inventory/units/{unit_id}", response_model=BloodInventoryOut)
+def update_inventory_unit(unit_id: int, request: BloodInventoryUpdate, db: Session = Depends(get_db)):
+    unit = db.query(BloodInventory).filter(BloodInventory.id == unit_id).first()
+    if not unit:
+        raise HTTPException(status_code=404, detail="Inventory unit not found")
+    
+    unit.status = request.status
+    db.commit()
+    db.refresh(unit)
+    return unit

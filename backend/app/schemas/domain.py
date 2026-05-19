@@ -42,3 +42,19 @@ class BloodStock(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
+# Blood Inventory
+class BloodInventoryOut(BaseModel):
+    id: int
+    unit_number: str
+    blood_group: str
+    quantity_ml: int
+    collection_date: date
+    expiry_date: date
+    status: str
+    
+    class Config:
+        from_attributes = True
+
+class BloodInventoryUpdate(BaseModel):
+    status: str
