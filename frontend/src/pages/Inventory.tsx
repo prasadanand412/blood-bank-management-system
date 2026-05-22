@@ -13,6 +13,10 @@ export default function Inventory() {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false)
   const [selectedUnit, setSelectedUnit] = useState<any>(null)
   const [newStatus, setNewStatus] = useState("")
+  
+  const [statusFilter, setStatusFilter] = useState("All")
+  const [bloodGroupFilter, setBloodGroupFilter] = useState("All")
+  const [sortBy, setSortBy] = useState("Expiry Date")
 
   const [units, setUnits] = useState<any[]>([])
 
@@ -38,10 +42,24 @@ export default function Inventory() {
     fetchUnits()
   }, [])
 
-  const filteredUnits = units.filter(u => 
+  let filteredUnits = units.filter(u => 
     u.unitNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
     u.bloodGroup.toLowerCase().includes(searchTerm.toLowerCase())
   )
+
+  if (statusFilter !== "All") {
+    filteredUnits = filteredUnits.filter(u => u.status === statusFilter)
+  }
+  if (bloodGroupFilter !== "All") {
+    filteredUnits = filteredUnits.filter(u => u.bloodGroup === bloodGroupFilter)
+  }
+
+  filteredUnits.sort((a, b) => {
+    if (sortBy === "Expiry Date") return new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime()
+    if (sortBy === "Collection Date") return new Date(b.collectionDate).getTime() - new Date(a.collectionDate).getTime()
+    if (sortBy === "Quantity (High-Low)") return b.quantity - a.quantity
+    return 0
+  })
 
   const handleUpdateClick = (unit: any) => {
     setSelectedUnit(unit)
@@ -83,14 +101,36 @@ export default function Inventory() {
         </div>
       </div>
 
-      <div className="flex items-center gap-2 max-w-sm">
-        <Search className="h-4 w-4 text-muted-foreground absolute ml-3" />
-        <Input 
-          placeholder="Search by unit number or group..." 
-          className="pl-9"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+      <div className="flex flex-col md:flex-row items-center gap-4">
+        <div className="flex items-center gap-2 w-full max-w-sm relative">
+          <Search className="h-4 w-4 text-muted-foreground absolute left-3" />
+          <Input 
+            placeholder="Search by unit number..." 
+            className="pl-9 w-full"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+          <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="All">All Statuses</option>
+            <option value="AVAILABLE">AVAILABLE</option>
+            <option value="RESERVED">RESERVED</option>
+            <option value="EXPIRED">EXPIRED</option>
+            <option value="DISCARDED">DISCARDED</option>
+          </Select>
+          <Select value={bloodGroupFilter} onChange={(e) => setBloodGroupFilter(e.target.value)}>
+            <option value="All">All Blood Groups</option>
+            {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bg => (
+              <option key={bg} value={bg}>{bg}</option>
+            ))}
+          </Select>
+          <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+            <option value="Expiry Date">Expiry Date (Soonest)</option>
+            <option value="Collection Date">Collection Date (Newest)</option>
+            <option value="Quantity (High-Low)">Quantity (High-Low)</option>
+          </Select>
+        </div>
       </div>
 
       <Table>

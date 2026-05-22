@@ -15,6 +15,10 @@ export default function Requests() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [notification, setNotification] = useState<{message: string, type: 'error' | 'success'} | null>(null)
   
+  const [statusFilter, setStatusFilter] = useState("All")
+  const [priorityFilter, setPriorityFilter] = useState("All")
+  const [sortBy, setSortBy] = useState("Newest")
+  
   const [requests, setRequests] = useState<any[]>([])
 
   const fetchRequests = async () => {
@@ -98,7 +102,21 @@ export default function Requests() {
     }
   }
 
-  const filteredRequests = requests.filter(r => r.hospital.toLowerCase().includes(searchTerm.toLowerCase()))
+  let filteredRequests = requests.filter(r => r.hospital.toLowerCase().includes(searchTerm.toLowerCase()))
+
+  if (statusFilter !== "All") {
+    filteredRequests = filteredRequests.filter(r => r.status === statusFilter)
+  }
+  if (priorityFilter !== "All") {
+    filteredRequests = filteredRequests.filter(r => r.priority === priorityFilter)
+  }
+
+  filteredRequests.sort((a, b) => {
+    if (sortBy === "Newest") return b.id - a.id
+    if (sortBy === "Oldest") return a.id - b.id
+    if (sortBy === "Required Date") return new Date(a.date).getTime() - new Date(b.date).getTime()
+    return 0
+  })
 
   return (
     <div className="space-y-6">
@@ -113,14 +131,37 @@ export default function Requests() {
         </Button>
       </div>
 
-      <div className="flex items-center gap-2 max-w-sm">
-        <Search className="h-4 w-4 text-muted-foreground absolute ml-3" />
-        <Input 
-          placeholder="Search hospitals..." 
-          className="pl-9"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+      <div className="flex flex-col md:flex-row items-center gap-4">
+        <div className="flex items-center gap-2 w-full max-w-sm relative">
+          <Search className="h-4 w-4 text-muted-foreground absolute left-3" />
+          <Input 
+            placeholder="Search hospitals..." 
+            className="pl-9 w-full"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+          <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="All">All Statuses</option>
+            <option value="Pending">Pending</option>
+            <option value="Approved">Approved</option>
+            <option value="Completed">Completed</option>
+            <option value="Denied">Denied</option>
+          </Select>
+          <Select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}>
+            <option value="All">All Priorities</option>
+            <option value="Emergency">Emergency</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+          </Select>
+          <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+            <option value="Newest">Newest Request</option>
+            <option value="Oldest">Oldest Request</option>
+            <option value="Required Date">Urgency (Date)</option>
+          </Select>
+        </div>
       </div>
 
       <Table>

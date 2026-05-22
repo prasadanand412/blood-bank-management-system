@@ -15,6 +15,8 @@ export default function Donors() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
   const [selectedDonor, setSelectedDonor] = useState<any>(null)
+  const [statusFilter, setStatusFilter] = useState("All")
+  const [sortBy, setSortBy] = useState("Newest")
   
   // Fetch Donors from API
   const [donors, setDonors] = useState<any[]>([])
@@ -78,7 +80,18 @@ export default function Donors() {
     }
   }
 
-  const filteredDonors = donors.filter(d => d.name.toLowerCase().includes(searchTerm.toLowerCase()))
+  let filteredDonors = donors.filter(d => d.name.toLowerCase().includes(searchTerm.toLowerCase()))
+  
+  if (statusFilter !== "All") {
+    filteredDonors = filteredDonors.filter(d => d.status === statusFilter)
+  }
+
+  filteredDonors.sort((a, b) => {
+    if (sortBy === "Newest") return b.id - a.id
+    if (sortBy === "Oldest") return a.id - b.id
+    if (sortBy === "Total Donations (High-Low)") return b.total - a.total
+    return 0
+  })
 
   return (
     <div className="space-y-6">
@@ -93,14 +106,28 @@ export default function Donors() {
         </Button>
       </div>
 
-      <div className="flex items-center gap-2 max-w-sm">
-        <Search className="h-4 w-4 text-muted-foreground absolute ml-3" />
-        <Input 
-          placeholder="Search donors..." 
-          className="pl-9"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+      <div className="flex flex-col sm:flex-row items-center gap-4">
+        <div className="flex items-center gap-2 w-full max-w-sm relative">
+          <Search className="h-4 w-4 text-muted-foreground absolute left-3" />
+          <Input 
+            placeholder="Search donors..." 
+            className="pl-9 w-full"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="All">All Statuses</option>
+            <option value="Eligible">Eligible</option>
+            <option value="Deferred">Deferred</option>
+          </Select>
+          <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+            <option value="Newest">Newest</option>
+            <option value="Oldest">Oldest</option>
+            <option value="Total Donations (High-Low)">Most Donations</option>
+          </Select>
+        </div>
       </div>
 
       <Table>
