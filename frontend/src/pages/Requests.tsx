@@ -142,21 +142,21 @@ export default function Requests() {
           />
         </div>
         <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-          <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="min-w-[130px]">
             <option value="All">All Statuses</option>
             <option value="Pending">Pending</option>
             <option value="Approved">Approved</option>
             <option value="Completed">Completed</option>
             <option value="Denied">Denied</option>
           </Select>
-          <Select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}>
+          <Select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)} className="min-w-[130px]">
             <option value="All">All Priorities</option>
             <option value="Emergency">Emergency</option>
             <option value="High">High</option>
             <option value="Medium">Medium</option>
             <option value="Low">Low</option>
           </Select>
-          <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+          <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="min-w-[160px]">
             <option value="Newest">Newest Request</option>
             <option value="Oldest">Oldest Request</option>
             <option value="Required Date">Urgency (Date)</option>

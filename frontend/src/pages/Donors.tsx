@@ -117,12 +117,12 @@ export default function Donors() {
           />
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="min-w-[140px]">
             <option value="All">All Statuses</option>
             <option value="Eligible">Eligible</option>
             <option value="Deferred">Deferred</option>
           </Select>
-          <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+          <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="min-w-[160px]">
             <option value="Newest">Newest</option>
             <option value="Oldest">Oldest</option>
             <option value="Total Donations (High-Low)">Most Donations</option>

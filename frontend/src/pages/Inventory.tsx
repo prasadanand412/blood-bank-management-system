@@ -112,20 +112,20 @@ export default function Inventory() {
           />
         </div>
         <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-          <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="min-w-[140px]">
             <option value="All">All Statuses</option>
             <option value="AVAILABLE">AVAILABLE</option>
             <option value="RESERVED">RESERVED</option>
             <option value="EXPIRED">EXPIRED</option>
             <option value="DISCARDED">DISCARDED</option>
           </Select>
-          <Select value={bloodGroupFilter} onChange={(e) => setBloodGroupFilter(e.target.value)}>
+          <Select value={bloodGroupFilter} onChange={(e) => setBloodGroupFilter(e.target.value)} className="min-w-[180px]">
             <option value="All">All Blood Groups</option>
             {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bg => (
               <option key={bg} value={bg}>{bg}</option>
             ))}
           </Select>
-          <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+          <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="min-w-[200px]">
             <option value="Expiry Date">Expiry Date (Soonest)</option>
             <option value="Collection Date">Collection Date (Newest)</option>
             <option value="Quantity (High-Low)">Quantity (High-Low)</option>
