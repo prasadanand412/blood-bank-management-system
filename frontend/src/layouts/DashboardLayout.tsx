@@ -1,8 +1,29 @@
 import { Outlet, Link, useLocation } from "react-router-dom"
 import { Activity, LayoutDashboard, Users, Droplet, FileText, Settings, LogOut, Bell } from "lucide-react"
+import { useState, useEffect } from "react"
+import axios from "axios"
 
 export default function DashboardLayout() {
   const location = useLocation()
+  const [alertCount, setAlertCount] = useState(0)
+
+  useEffect(() => {
+    // Fetch live dashboard stats to populate the alert count (low stock + pending emergency requests)
+    const fetchAlerts = async () => {
+      try {
+        const response = await axios.get("http://127.0.0.1:8000/api/v1/dashboard/stats")
+        const stats = response.data
+        // Calculate alerts: pending emergency requests + expiring soon units
+        setAlertCount(stats.pending_requests + stats.expiring_soon)
+      } catch (error) {
+        console.error("Failed to fetch alerts", error)
+      }
+    }
+    
+    fetchAlerts()
+    const interval = setInterval(fetchAlerts, 30000) // update every 30s
+    return () => clearInterval(interval)
+  }, [])
   
   const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
@@ -61,9 +82,11 @@ export default function DashboardLayout() {
             <div className="flex items-center gap-4">
               <button className="relative text-muted-foreground hover:text-foreground">
                 <Bell className="h-5 w-5" />
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] text-destructive-foreground font-bold">
-                  3
-                </span>
+                {alertCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] text-destructive-foreground font-bold">
+                    {alertCount}
+                  </span>
+                )}
               </button>
               <div className="flex items-center gap-2">
                 <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">

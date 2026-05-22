@@ -1,4 +1,5 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import axios from "axios"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -15,12 +16,21 @@ export default function Donors() {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
   const [selectedDonor, setSelectedDonor] = useState<any>(null)
   
-  // Dummy State for Donors
-  const [donors, setDonors] = useState([
-    { id: 1, name: "John Doe", bloodGroup: "O+", lastDonation: "2023-12-01", total: 5, status: "Eligible" },
-    { id: 2, name: "Jane Smith", bloodGroup: "A-", lastDonation: "Never", total: 0, status: "Eligible" },
-    { id: 3, name: "Michael Johnson", bloodGroup: "B+", lastDonation: "2024-04-15", total: 12, status: "Deferred" },
-  ])
+  // Fetch Donors from API
+  const [donors, setDonors] = useState<any[]>([])
+
+  const fetchDonors = async () => {
+    try {
+      const response = await axios.get("http://127.0.0.1:8000/api/v1/donors")
+      setDonors(response.data)
+    } catch (error) {
+      console.error("Error fetching donors:", error)
+    }
+  }
+
+  useEffect(() => {
+    fetchDonors()
+  }, [])
 
   // Form State
   const [formData, setFormData] = useState({
@@ -37,21 +47,13 @@ export default function Donors() {
     donationDateTime: "",
   })
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
     
-    // Simulate API Call
-    setTimeout(() => {
-      const newDonor = {
-        id: donors.length + 1,
-        name: `${formData.firstName} ${formData.lastName}`,
-        bloodGroup: formData.bloodGroup,
-        lastDonation: formData.donationDateTime ? formData.donationDateTime.replace('T', ' ') : new Date().toISOString().replace('T', ' ').substring(0, 16),
-        total: 1,
-        status: "Eligible",
-      }
-      setDonors([newDonor, ...donors])
+    try {
+      await axios.post("http://127.0.0.1:8000/api/v1/donors", formData)
+      await fetchDonors()
       setIsSubmitting(false)
       setIsModalOpen(false)
       
@@ -60,11 +62,20 @@ export default function Donors() {
         firstName: "", lastName: "", dob: "", gender: "Male", bloodGroup: "A+",
         contact: "", address: "", bloodPressure: "", hemoglobin: "", quantity: 450, donationDateTime: "",
       })
-    }, 1000)
+    } catch (error) {
+      console.error("Error registering donor:", error)
+      setIsSubmitting(false)
+    }
   }
 
-  const handleDelete = (id: number) => {
-    setDonors(donors.filter(d => d.id !== id))
+  const handleDelete = async (id: number) => {
+    try {
+      await axios.delete(`http://127.0.0.1:8000/api/v1/donors/${id}`)
+      setDonors(donors.filter(d => d.id !== id))
+    } catch (error) {
+      console.error("Error deleting donor:", error)
+      alert("Cannot delete this donor because they have existing donations or appointments tied to them.")
+    }
   }
 
   const filteredDonors = donors.filter(d => d.name.toLowerCase().includes(searchTerm.toLowerCase()))

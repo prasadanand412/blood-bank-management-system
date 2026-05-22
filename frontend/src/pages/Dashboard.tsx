@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import axios from "axios"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Users, Droplet, Activity, AlertTriangle } from "lucide-react"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts"
@@ -19,21 +20,42 @@ export default function Dashboard() {
     total_donors: 0,
     available_blood_units: 0,
     pending_requests: 0,
-    expiring_soon: 0
+    expiring_soon: 0,
+    accepted_requests: 0,
+    fulfilled_requests: 0
   })
+  const [chartData, setChartData] = useState<any[]>([])
+  const [recentRequests, setRecentRequests] = useState<any[]>([])
 
-  // Mock fetching from our FastAPI backend
   useEffect(() => {
-    // In reality, this would be: axios.get('/api/v1/dashboard/stats')
-    // Simulating response for demonstration
-    setTimeout(() => {
-      setStats({
-        total_donors: 1245,
-        available_blood_units: 705,
-        pending_requests: 12,
-        expiring_soon: 34
-      })
-    }, 500)
+    const fetchData = async () => {
+      try {
+        const statsRes = await axios.get("http://127.0.0.1:8000/api/v1/dashboard/stats")
+        setStats(statsRes.data)
+        
+        const stockRes = await axios.get("http://127.0.0.1:8000/api/v1/inventory/stock")
+        const formattedStock = stockRes.data.map((item: any) => ({
+          name: item.blood_group,
+          amount: item.total_units
+        }))
+        setChartData(formattedStock.length > 0 ? formattedStock : initialData)
+        
+        const requestsRes = await axios.get("http://127.0.0.1:8000/api/v1/dashboard/recent-requests")
+        setRecentRequests(requestsRes.data)
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error)
+        // If it fails, keep the old data instead of replacing with initialData so it doesn't flicker
+      }
+    }
+    
+    // Fetch immediately on mount
+    fetchData()
+    
+    // Set up polling interval (every 3 seconds)
+    const intervalId = setInterval(fetchData, 3000)
+    
+    // Cleanup interval on unmount
+    return () => clearInterval(intervalId)
   }, [])
 
   return (
@@ -43,7 +65,7 @@ export default function Dashboard() {
         <p className="text-muted-foreground">Monitor real-time blood inventory and activities.</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Active Donors</CardTitle>
@@ -87,6 +109,27 @@ export default function Dashboard() {
             <p className="text-xs text-muted-foreground">Units expiring in next 7 days</p>
           </CardContent>
         </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Accepted Requests</CardTitle>
+            <Activity className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.accepted_requests}</div>
+            <p className="text-xs text-muted-foreground">Awaiting fulfillment</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Fulfilled Requests</CardTitle>
+            <Activity className="h-4 w-4 text-success" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.fulfilled_requests}</div>
+            <p className="text-xs text-muted-foreground">Successfully delivered</p>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid gap-4 md:grid-cols-7 lg:grid-cols-7">
@@ -98,7 +141,7 @@ export default function Dashboard() {
           <CardContent className="pl-2">
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={initialData}>
+                <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                   <XAxis 
                     dataKey="name" 
@@ -132,11 +175,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-8">
-              {[
-                { hospital: "Apollo City Hospital", blood: "O-", units: 3, time: "10 mins ago" },
-                { hospital: "St. Mary's General", blood: "AB+", units: 2, time: "1 hour ago" },
-                { hospital: "City Care Clinic", blood: "A-", units: 1, time: "3 hours ago" }
-              ].map((req, i) => (
+              {recentRequests.length > 0 ? recentRequests.map((req, i) => (
                 <div key={i} className="flex items-center">
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-destructive/10 text-destructive font-bold">
                     {req.blood}
@@ -147,11 +186,16 @@ export default function Dashboard() {
                       Requested {req.units} units
                     </p>
                   </div>
-                  <div className="ml-auto font-medium text-xs text-muted-foreground">
-                    {req.time}
+                  <div className="ml-auto font-medium text-xs text-muted-foreground text-right">
+                    {new Date(req.time).toLocaleDateString()}<br/>
+                    {new Date(req.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                   </div>
                 </div>
-              ))}
+              )) : (
+                <div className="text-center text-muted-foreground py-8">
+                  No recent emergency requests.
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

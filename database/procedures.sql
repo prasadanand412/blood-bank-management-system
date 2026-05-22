@@ -62,7 +62,6 @@ BEGIN
         RAISE EXCEPTION 'Failed to allocate all units. Rolled back.';
     END IF;
     
-    COMMIT;
 END;
 $$;
 
@@ -105,7 +104,6 @@ BEGIN
         p_unit_number, p_donation_id, v_blood_group, v_quantity, CURRENT_DATE, CURRENT_DATE + p_expiry_days, 'AVAILABLE'
     );
     
-    COMMIT;
 END;
 $$;
 
@@ -128,6 +126,5 @@ BEGIN
         FROM users JOIN roles ON users.role_id = roles.id WHERE roles.name = 'Admin';
     END IF;
     
-    COMMIT;
 END;
 $$;

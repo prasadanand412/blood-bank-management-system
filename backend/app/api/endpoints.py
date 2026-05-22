@@ -4,8 +4,8 @@ from sqlalchemy import text
 from typing import List
 
 from app.database.session import get_db
-from app.models.domain import User, Role, BloodInventory
-from app.schemas.domain import UserOut, DashboardStats, BloodStock, LoginRequest, Token, BloodInventoryOut, BloodInventoryUpdate
+from app.models.domain import User, Role, BloodInventory, Donor, Donation, Hospital, BloodRequest
+from app.schemas.domain import UserOut, DashboardStats, BloodStock, LoginRequest, Token, BloodInventoryOut, BloodInventoryUpdate, DonorCreate, DonorOut, BloodRequestCreate, BloodRequestOut, BloodRequestStatusUpdate
 from app.config.settings import settings
 
 # Dummy auth tools for demonstration
@@ -51,15 +51,51 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
         result4 = db.execute(text("SELECT COUNT(*) FROM expiring_inventory_view")).scalar()
         expiring_soon = result4 if result4 else 0
         
+        # Get accepted requests
+        result5 = db.execute(text("SELECT COUNT(*) FROM blood_requests WHERE status = 'APPROVED'")).scalar()
+        accepted_requests = result5 if result5 else 0
+        
+        # Get fulfilled requests
+        result6 = db.execute(text("SELECT COUNT(*) FROM blood_requests WHERE status = 'COMPLETED'")).scalar()
+        fulfilled_requests = result6 if result6 else 0
+        
         return DashboardStats(
             total_donors=total_donors,
             available_blood_units=available_blood_units,
             pending_requests=pending_requests,
-            expiring_soon=expiring_soon
+            expiring_soon=expiring_soon,
+            accepted_requests=accepted_requests,
+            fulfilled_requests=fulfilled_requests
         )
     except Exception as e:
         # Fallback if views are not yet generated in DB
-        return DashboardStats(total_donors=0, available_blood_units=0, pending_requests=0, expiring_soon=0)
+        return DashboardStats(total_donors=0, available_blood_units=0, pending_requests=0, expiring_soon=0, accepted_requests=0, fulfilled_requests=0)
+
+@router.get("/dashboard/recent-requests")
+def get_recent_requests(db: Session = Depends(get_db)):
+    try:
+        # Query blood_requests joined with hospitals
+        sql = text("""
+            SELECT h.hospital_name, r.blood_group, r.units_requested, r.request_date
+            FROM blood_requests r
+            JOIN hospitals h ON r.hospital_id = h.id
+            WHERE r.priority = 'EMERGENCY'
+            ORDER BY r.request_date DESC
+            LIMIT 5
+        """)
+        result = db.execute(sql).fetchall()
+        
+        requests = []
+        for row in result:
+            requests.append({
+                "hospital": row[0],
+                "blood": row[1],
+                "units": row[2],
+                "time": str(row[3])
+            })
+        return requests
+    except Exception as e:
+        return []
 
 @router.get("/inventory/stock", response_model=List[BloodStock])
 def get_blood_stock(db: Session = Depends(get_db)):
@@ -84,3 +120,195 @@ def update_inventory_unit(unit_id: int, request: BloodInventoryUpdate, db: Sessi
     db.commit()
     db.refresh(unit)
     return unit
+
+@router.get("/donors", response_model=List[DonorOut])
+def get_donors(db: Session = Depends(get_db)):
+    donors = db.query(Donor).order_by(Donor.id.desc()).all()
+    result = []
+    for d in donors:
+        result.append(DonorOut(
+            id=d.id,
+            name=f"{d.first_name} {d.last_name}",
+            bloodGroup=d.blood_group,
+            lastDonation=str(d.last_donation_date) if d.last_donation_date else "Never",
+            total=d.total_donations,
+            status="Eligible" if d.is_eligible else "Deferred"
+        ))
+    return result
+
+@router.post("/donors", response_model=DonorOut)
+def register_donor_and_donation(request: DonorCreate, db: Session = Depends(get_db)):
+    import uuid
+    # Create Dummy User for Donor
+    dummy_email = f"donor.{uuid.uuid4().hex[:8]}@bloodbank.local"
+    new_user = User(
+        email=dummy_email,
+        password_hash="dummy_hash",
+        role_id=4 # Donor role
+    )
+    db.add(new_user)
+    db.flush()
+    
+    # Create Donor
+    new_donor = Donor(
+        user_id=new_user.id,
+        first_name=request.firstName,
+        last_name=request.lastName,
+        date_of_birth=request.dob,
+        gender=request.gender,
+        blood_group=request.bloodGroup,
+        contact_number=request.contact,
+        address=request.address,
+        last_donation_date=request.donationDateTime.date(),
+        total_donations=1,
+        is_eligible=True
+    )
+    db.add(new_donor)
+    db.flush()
+    
+    # Create Donation (as PENDING)
+    new_donation = Donation(
+        donor_id=new_donor.id,
+        blood_group=request.bloodGroup,
+        quantity_ml=request.quantity,
+        status="PENDING",
+        blood_pressure=request.bloodPressure,
+        hemoglobin_level=request.hemoglobin,
+        handled_by=1 # Assuming admin user ID 1
+    )
+    db.add(new_donation)
+    db.flush()
+    
+    # Call stored procedure to complete donation and add to inventory
+    unit_number = f"UNIT-{request.bloodGroup}-{uuid.uuid4().hex[:6].upper()}"
+    db.execute(
+        text("CALL register_donation_completion(:don_id, CAST(:unit_no AS VARCHAR), 35)"),
+        {"don_id": new_donation.id, "unit_no": unit_number}
+    )
+    db.commit()
+    db.refresh(new_donor)
+    
+    return DonorOut(
+        id=new_donor.id,
+        name=f"{new_donor.first_name} {new_donor.last_name}",
+        bloodGroup=new_donor.blood_group,
+        lastDonation=str(new_donor.last_donation_date),
+        total=new_donor.total_donations,
+        status="Eligible"
+    )
+
+@router.delete("/donors/{donor_id}")
+def delete_donor(donor_id: int, db: Session = Depends(get_db)):
+    donor = db.query(Donor).filter(Donor.id == donor_id).first()
+    if not donor:
+        raise HTTPException(status_code=404, detail="Donor not found")
+    # Because of cascade constraints or restrictions, deleting a donor might fail if they have donations/inventory.
+    # In a real app we'd archive them. For now, try deleting the associated user which cascades down to donor.
+    try:
+        db.delete(donor)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Cannot delete donor due to existing records (e.g. donations).")
+    return {"message": "Donor deleted successfully"}
+
+@router.get("/requests", response_model=List[BloodRequestOut])
+def get_requests(db: Session = Depends(get_db)):
+    requests = db.query(BloodRequest).order_by(BloodRequest.id.desc()).all()
+    result = []
+    for r in requests:
+        hospital_name = r.hospital.hospital_name if r.hospital else "Unknown Hospital"
+        result.append(BloodRequestOut(
+            id=r.id,
+            hospital=hospital_name,
+            bloodGroup=r.blood_group,
+            units=r.units_requested,
+            priority=r.priority.capitalize() if r.priority else "Medium",
+            date=str(r.required_date),
+            status=r.status.capitalize() if r.status else "Pending"
+        ))
+    return result
+
+@router.post("/requests", response_model=BloodRequestOut)
+def create_request(request: BloodRequestCreate, db: Session = Depends(get_db)):
+    import uuid
+    # Create Dummy Hospital User if not exists
+    # To keep it simple, we create a new user and hospital for each request unless matched
+    dummy_email = f"hospital.{uuid.uuid4().hex[:8]}@bloodbank.local"
+    new_user = User(email=dummy_email, password_hash="dummy", role_id=3) # Hospital role
+    db.add(new_user)
+    db.flush()
+    
+    new_hospital = Hospital(
+        user_id=new_user.id,
+        hospital_name=request.hospitalName,
+        license_number=uuid.uuid4().hex[:10],
+        contact_person="Dr. Default",
+        contact_number="1234567890",
+        address="123 Hospital Way"
+    )
+    db.add(new_hospital)
+    db.flush()
+    
+    new_request = BloodRequest(
+        hospital_id=new_hospital.id,
+        blood_group=request.bloodGroup,
+        units_requested=request.units,
+        priority=request.priority.upper(),
+        required_date=request.requiredDate,
+        reason=request.reason,
+        status="PENDING"
+    )
+    db.add(new_request)
+    db.commit()
+    db.refresh(new_request)
+    
+    return BloodRequestOut(
+        id=new_request.id,
+        hospital=new_hospital.hospital_name,
+        bloodGroup=new_request.blood_group,
+        units=new_request.units_requested,
+        priority=new_request.priority.capitalize(),
+        date=str(new_request.required_date),
+        status="Pending"
+    )
+
+@router.patch("/requests/{request_id}/status", response_model=BloodRequestOut)
+def update_request_status(request_id: int, update: BloodRequestStatusUpdate, db: Session = Depends(get_db)):
+    req = db.query(BloodRequest).filter(BloodRequest.id == request_id).first()
+    if not req:
+        raise HTTPException(status_code=404, detail="Request not found")
+        
+    new_status = update.status.upper()
+    
+    # If the new status is APPROVED, call the stored procedure to allocate inventory!
+    if new_status == "APPROVED" and req.status == "PENDING":
+        try:
+            db.execute(text("CALL approve_blood_request(:req_id, 1)"), {"req_id": req.id})
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            error_str = str(e)
+            clean_error = "An unexpected error occurred while allocating inventory."
+            if "Insufficient stock" in error_str:
+                # Extract just the "Insufficient stock..." part
+                parts = error_str.split("CONTEXT:")[0].split(")")
+                clean_error = parts[-1].strip() if len(parts) > 1 else "Not enough blood units in inventory to fulfill this request!"
+            
+            raise HTTPException(status_code=400, detail=clean_error)
+    else:
+        # Just update status manually
+        req.status = new_status
+        db.commit()
+        
+    db.refresh(req)
+    hospital_name = req.hospital.hospital_name if req.hospital else "Unknown Hospital"
+    return BloodRequestOut(
+        id=req.id,
+        hospital=hospital_name,
+        bloodGroup=req.blood_group,
+        units=req.units_requested,
+        priority=req.priority.capitalize(),
+        date=str(req.required_date),
+        status=req.status.capitalize()
+    )

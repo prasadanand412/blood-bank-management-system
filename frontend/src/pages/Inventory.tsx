@@ -1,4 +1,5 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import axios from "axios"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -13,13 +14,29 @@ export default function Inventory() {
   const [selectedUnit, setSelectedUnit] = useState<any>(null)
   const [newStatus, setNewStatus] = useState("")
 
-  // Dummy State for Inventory Units
-  const [units, setUnits] = useState([
-    { id: 1, unitNumber: "U-1001", bloodGroup: "O+", quantity: 450, collectionDate: "2024-05-10", expiryDate: "2024-06-21", status: "AVAILABLE" },
-    { id: 2, unitNumber: "U-1002", bloodGroup: "A-", quantity: 350, collectionDate: "2024-05-12", expiryDate: "2024-06-23", status: "RESERVED" },
-    { id: 3, unitNumber: "U-1003", bloodGroup: "B+", quantity: 450, collectionDate: "2024-05-01", expiryDate: "2024-06-12", status: "AVAILABLE" },
-    { id: 4, unitNumber: "U-1004", bloodGroup: "AB+", quantity: 450, collectionDate: "2024-04-01", expiryDate: "2024-05-13", status: "EXPIRED" },
-  ])
+  const [units, setUnits] = useState<any[]>([])
+
+  const fetchUnits = async () => {
+    try {
+      const response = await axios.get("http://127.0.0.1:8000/api/v1/inventory/units")
+      const formatted = response.data.map((u: any) => ({
+        id: u.id,
+        unitNumber: u.unit_number,
+        bloodGroup: u.blood_group,
+        quantity: u.quantity_ml,
+        collectionDate: u.collection_date,
+        expiryDate: u.expiry_date,
+        status: u.status
+      }))
+      setUnits(formatted)
+    } catch (error) {
+      console.error("Error fetching inventory units:", error)
+    }
+  }
+
+  useEffect(() => {
+    fetchUnits()
+  }, [])
 
   const filteredUnits = units.filter(u => 
     u.unitNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -32,16 +49,19 @@ export default function Inventory() {
     setIsUpdateModalOpen(true)
   }
 
-  const handleUpdateSubmit = (e: React.FormEvent) => {
+  const handleUpdateSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedUnit) return
 
-    // Simulate API Call
-    setTimeout(() => {
-      setUnits(units.map(u => u.id === selectedUnit.id ? { ...u, status: newStatus } : u))
+    try {
+      await axios.patch(`http://127.0.0.1:8000/api/v1/inventory/units/${selectedUnit.id}`, { status: newStatus })
+      await fetchUnits()
       setIsUpdateModalOpen(false)
       setSelectedUnit(null)
-    }, 500)
+    } catch (error) {
+      console.error("Error updating unit status:", error)
+      alert("Failed to update unit status.")
+    }
   }
 
   const getStatusBadgeVariant = (status: string) => {

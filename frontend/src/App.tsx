@@ -7,6 +7,8 @@ import Donors from "./pages/Donors"
 import Requests from "./pages/Requests"
 import Inventory from "./pages/Inventory"
 
+import Settings from "./pages/Settings"
+
 function App() {
   return (
     <BrowserRouter>
@@ -19,7 +21,7 @@ function App() {
           <Route path="donors" element={<Donors />} />
           <Route path="inventory" element={<Inventory />} />
           <Route path="requests" element={<Requests />} />
-          <Route path="settings" element={<div className="p-4">Settings Coming Soon</div>} />
+          <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>
     </BrowserRouter>

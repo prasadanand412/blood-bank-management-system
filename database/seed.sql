@@ -40,16 +40,17 @@ INSERT INTO blood_inventory (unit_number, donation_id, blood_group, quantity_ml,
 ('UNIT-O+-1001', 1, 'O+', 450, CURRENT_DATE - INTERVAL '10 days', CURRENT_DATE + INTERVAL '25 days', 'AVAILABLE'),
 ('UNIT-O+-1002', 2, 'O+', 450, CURRENT_DATE - INTERVAL '150 days', CURRENT_DATE - INTERVAL '115 days', 'EXPIRED');
 
+-- Create some dummy donations for the extra stock
+INSERT INTO donations (donor_id, blood_group, quantity_ml, donation_date, status, blood_pressure, hemoglobin_level, handled_by) VALUES
+(2, 'A+', 450, CURRENT_DATE - INTERVAL '2 days', 'COMPLETED', '115/75', 13.5, 2),
+(2, 'A+', 450, CURRENT_DATE - INTERVAL '2 days', 'COMPLETED', '118/76', 14.0, 2),
+(2, 'A+', 450, CURRENT_DATE - INTERVAL '2 days', 'COMPLETED', '120/80', 13.8, 2);
+
 -- Add some extra available stock directly (for testing)
-INSERT INTO blood_inventory (unit_number, donation_id, blood_group, quantity_ml, collection_date, expiry_date, status)
-SELECT 
-    'UNIT-A+-200' || generate_series(1,5), 
-    (SELECT id FROM donations LIMIT 1), -- Dummy link for seed
-    'A+', 
-    450, 
-    CURRENT_DATE - INTERVAL '2 days', 
-    CURRENT_DATE + INTERVAL '33 days', 
-    'AVAILABLE';
+INSERT INTO blood_inventory (unit_number, donation_id, blood_group, quantity_ml, collection_date, expiry_date, status) VALUES
+('UNIT-A+-2001', 3, 'A+', 450, CURRENT_DATE - INTERVAL '2 days', CURRENT_DATE + INTERVAL '33 days', 'AVAILABLE'),
+('UNIT-A+-2002', 4, 'A+', 450, CURRENT_DATE - INTERVAL '2 days', CURRENT_DATE + INTERVAL '33 days', 'AVAILABLE'),
+('UNIT-A+-2003', 5, 'A+', 450, CURRENT_DATE - INTERVAL '2 days', CURRENT_DATE + INTERVAL '33 days', 'AVAILABLE');
 
 -- 8. Blood Requests
 INSERT INTO blood_requests (hospital_id, blood_group, units_requested, priority, status, required_date, reason) VALUES

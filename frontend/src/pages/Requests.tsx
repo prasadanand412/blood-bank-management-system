@@ -1,4 +1,5 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import axios from "axios"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -12,13 +13,22 @@ export default function Requests() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [notification, setNotification] = useState<{message: string, type: 'error' | 'success'} | null>(null)
   
-  // Dummy State for Requests
-  const [requests, setRequests] = useState([
-    { id: 101, hospital: "Apollo City Hospital", bloodGroup: "O-", units: 3, priority: "Emergency", status: "Pending", date: "2026-05-18" },
-    { id: 102, hospital: "St. Mary's General", bloodGroup: "AB+", units: 2, priority: "High", status: "Approved", date: "2026-05-19" },
-    { id: 103, hospital: "City Care Clinic", bloodGroup: "A-", units: 1, priority: "Medium", status: "Completed", date: "2026-05-15" },
-  ])
+  const [requests, setRequests] = useState<any[]>([])
+
+  const fetchRequests = async () => {
+    try {
+      const response = await axios.get("http://127.0.0.1:8000/api/v1/requests")
+      setRequests(response.data)
+    } catch (error) {
+      console.error("Error fetching requests:", error)
+    }
+  }
+
+  useEffect(() => {
+    fetchRequests()
+  }, [])
 
   // Form State
   const [formData, setFormData] = useState({
@@ -30,30 +40,31 @@ export default function Requests() {
     reason: "",
   })
 
-  const handleSubmitRequest = (e: React.FormEvent) => {
+  const handleSubmitRequest = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
     
-    // Simulate API Call
-    setTimeout(() => {
-      const newRequest = {
-        id: 100 + requests.length + 1,
-        hospital: formData.hospitalName,
-        bloodGroup: formData.bloodGroup,
-        units: formData.units,
-        priority: formData.priority,
-        status: "Pending",
-        date: formData.requiredDate,
-      }
-      setRequests([newRequest, ...requests])
+    try {
+      await axios.post("http://127.0.0.1:8000/api/v1/requests", formData)
+      await fetchRequests()
       setIsSubmitting(false)
       setIsModalOpen(false)
+      showNotification("Request created successfully!", "success")
       
       // Reset Form
       setFormData({
         hospitalName: "", bloodGroup: "A+", units: 1, priority: "Medium", requiredDate: "", reason: ""
       })
-    }, 1000)
+    } catch (error) {
+      console.error("Error creating request:", error)
+      setIsSubmitting(false)
+      showNotification("Failed to create request. Please try again.", "error")
+    }
+  }
+
+  const showNotification = (message: string, type: 'error' | 'success') => {
+    setNotification({ message, type })
+    setTimeout(() => setNotification(null), 4000)
   }
 
   const getPriorityBadge = (priority: string) => {
@@ -70,7 +81,20 @@ export default function Requests() {
       case 'Completed': return 'success'
       case 'Approved': return 'default'
       case 'Pending': return 'warning'
+      case 'Denied': return 'destructive'
       default: return 'outline'
+    }
+  }
+
+  const handleAction = async (id: number, newStatus: string) => {
+    try {
+      await axios.patch(`http://127.0.0.1:8000/api/v1/requests/${id}/status`, { status: newStatus })
+      await fetchRequests()
+      if (newStatus === 'Approved') showNotification("Request successfully approved and units allocated!", "success")
+    } catch (error: any) {
+      console.error("Error updating request status:", error)
+      const errorMsg = error.response?.data?.detail || "Failed to update status. If accepting, you might be out of inventory!"
+      showNotification(errorMsg, "error")
     }
   }
 
@@ -129,7 +153,20 @@ export default function Requests() {
                 <Badge variant={getStatusBadge(req.status) as any}>{req.status}</Badge>
               </TableCell>
               <TableCell className="text-right">
-                <Button variant="ghost" size="sm">Manage</Button>
+                <div className="flex justify-end gap-2">
+                  {req.status === 'Pending' && (
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => handleAction(req.id, 'Approved')}>Accept</Button>
+                      <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleAction(req.id, 'Denied')}>Deny</Button>
+                    </>
+                  )}
+                  {req.status === 'Approved' && (
+                    <Button variant="default" size="sm" onClick={() => handleAction(req.id, 'Completed')}>Fulfill</Button>
+                  )}
+                  {(req.status === 'Completed' || req.status === 'Denied') && (
+                    <span className="text-sm text-muted-foreground px-2 py-1">Done</span>
+                  )}
+                </div>
               </TableCell>
             </TableRow>
           ))}
@@ -199,6 +236,23 @@ export default function Requests() {
           </div>
         </form>
       </Modal>
+
+      {/* Floating Toast Notification */}
+      {notification && (
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl transition-all duration-300 animate-in slide-in-from-bottom-5 ${notification.type === 'error' ? 'bg-destructive text-destructive-foreground' : 'bg-green-600 text-white'}`}>
+          <div className={`flex h-8 w-8 items-center justify-center rounded-full bg-white/20`}>
+            {notification.type === 'error' ? (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+            )}
+          </div>
+          <div>
+            <h4 className="font-bold">{notification.type === 'error' ? 'Action Failed' : 'Success'}</h4>
+            <p className="text-sm opacity-90">{notification.message}</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

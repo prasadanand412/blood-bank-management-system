@@ -32,6 +32,8 @@ class DashboardStats(BaseModel):
     available_blood_units: int
     pending_requests: int
     expiring_soon: int
+    accepted_requests: int
+    fulfilled_requests: int
 
 class BloodStock(BaseModel):
     blood_group: str
@@ -57,4 +59,47 @@ class BloodInventoryOut(BaseModel):
         from_attributes = True
 
 class BloodInventoryUpdate(BaseModel):
+    status: str
+
+# Donors
+class DonorCreate(BaseModel):
+    firstName: str
+    lastName: str
+    dob: date
+    gender: str
+    bloodGroup: str
+    contact: str
+    address: Optional[str] = None
+    bloodPressure: str
+    hemoglobin: float
+    quantity: int
+    donationDateTime: datetime
+
+class DonorOut(BaseModel):
+    id: int
+    name: str
+    bloodGroup: str
+    lastDonation: Optional[str] = None
+    total: int
+    status: str
+
+# Blood Requests
+class BloodRequestCreate(BaseModel):
+    hospitalName: str
+    bloodGroup: str
+    units: int
+    priority: str
+    requiredDate: date
+    reason: str
+
+class BloodRequestOut(BaseModel):
+    id: int
+    hospital: str
+    bloodGroup: str
+    units: int
+    priority: str
+    date: str
+    status: str
+
+class BloodRequestStatusUpdate(BaseModel):
     status: str
