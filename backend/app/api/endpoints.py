@@ -126,15 +126,21 @@ def get_donors(db: Session = Depends(get_db)):
     donors = db.query(Donor).order_by(Donor.id.desc()).all()
     result = []
     for d in donors:
+        latest_donation = db.query(Donation).filter(Donation.donor_id == d.id).order_by(Donation.donation_date.desc()).first()
+        notes = latest_donation.medical_notes if latest_donation and latest_donation.medical_notes else "None"
+        
         result.append(DonorOut(
             id=d.id,
             name=f"{d.first_name} {d.last_name}",
             bloodGroup=d.blood_group,
             lastDonation=str(d.last_donation_date) if d.last_donation_date else "Never",
             total=d.total_donations,
-            status="Eligible" if d.is_eligible else "Deferred"
+            status="Eligible" if d.is_eligible else "Deferred",
+            medicalNotes=notes
         ))
     return result
+
+from sqlalchemy.exc import IntegrityError
 
 @router.post("/donors", response_model=DonorOut)
 def register_donor_and_donation(request: DonorCreate, db: Session = Depends(get_db)):
@@ -149,45 +155,52 @@ def register_donor_and_donation(request: DonorCreate, db: Session = Depends(get_
     db.add(new_user)
     db.flush()
     
-    # Create Donor
-    new_donor = Donor(
-        user_id=new_user.id,
-        first_name=request.firstName,
-        last_name=request.lastName,
-        date_of_birth=request.dob,
-        gender=request.gender,
-        blood_group=request.bloodGroup,
-        contact_number=request.contact,
-        address=request.address,
-        last_donation_date=request.donationDateTime.date(),
-        total_donations=1,
-        is_eligible=True
-    )
-    db.add(new_donor)
-    db.flush()
-    
-    # Create Donation (as PENDING)
-    new_donation = Donation(
-        donor_id=new_donor.id,
-        blood_group=request.bloodGroup,
-        quantity_ml=request.quantity,
-        status="PENDING",
-        blood_pressure=request.bloodPressure,
-        hemoglobin_level=request.hemoglobin,
-        medical_notes=request.medicalNotes,
-        handled_by=1 # Assuming admin user ID 1
-    )
-    db.add(new_donation)
-    db.flush()
-    
-    # Call stored procedure to complete donation and add to inventory
-    unit_number = f"UNIT-{request.bloodGroup}-{uuid.uuid4().hex[:6].upper()}"
-    db.execute(
-        text("CALL register_donation_completion(:don_id, CAST(:unit_no AS VARCHAR), 35)"),
-        {"don_id": new_donation.id, "unit_no": unit_number}
-    )
-    db.commit()
-    db.refresh(new_donor)
+    try:
+        # Create Donor
+        new_donor = Donor(
+            user_id=new_user.id,
+            first_name=request.firstName,
+            last_name=request.lastName,
+            date_of_birth=request.dob,
+            gender=request.gender,
+            blood_group=request.bloodGroup,
+            contact_number=request.contact,
+            address=request.address,
+            last_donation_date=request.donationDateTime.date(),
+            total_donations=0,
+            is_eligible=True
+        )
+        db.add(new_donor)
+        db.flush()
+        
+        # Create Donation (as PENDING)
+        new_donation = Donation(
+            donor_id=new_donor.id,
+            blood_group=request.bloodGroup,
+            quantity_ml=request.quantity,
+            status="PENDING",
+            blood_pressure=request.bloodPressure,
+            hemoglobin_level=request.hemoglobin,
+            medical_notes=request.medicalNotes,
+            handled_by=1 # Assuming admin user ID 1
+        )
+        db.add(new_donation)
+        db.flush()
+        
+        # Call stored procedure to complete donation and add to inventory
+        unit_number = f"UNIT-{request.bloodGroup}-{uuid.uuid4().hex[:6].upper()}"
+        db.execute(
+            text("CALL register_donation_completion(:don_id, CAST(:unit_no AS VARCHAR), 35)"),
+            {"don_id": new_donation.id, "unit_no": unit_number}
+        )
+        db.commit()
+        db.refresh(new_donor)
+    except IntegrityError as e:
+        db.rollback()
+        error_msg = str(e)
+        if "chk_age" in error_msg:
+            raise HTTPException(status_code=400, detail="Donor must be at least 18 years old.")
+        raise HTTPException(status_code=400, detail="Database constraint violated. Please check the provided data.")
     
     return DonorOut(
         id=new_donor.id,
@@ -195,7 +208,8 @@ def register_donor_and_donation(request: DonorCreate, db: Session = Depends(get_
         bloodGroup=new_donor.blood_group,
         lastDonation=str(new_donor.last_donation_date),
         total=new_donor.total_donations,
-        status="Eligible"
+        status="Eligible",
+        medicalNotes=request.medicalNotes or "None"
     )
 
 @router.delete("/donors/{donor_id}")

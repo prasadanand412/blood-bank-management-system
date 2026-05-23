@@ -83,6 +83,7 @@ class DonorOut(BaseModel):
     lastDonation: Optional[str] = None
     total: int
     status: str
+    medicalNotes: Optional[str] = None
 
 # Blood Requests
 class BloodRequestCreate(BaseModel):

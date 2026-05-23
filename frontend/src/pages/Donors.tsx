@@ -83,10 +83,11 @@ export default function Donors() {
       })
       setDiseaseState("None")
       setMedicalNotes("")
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error registering donor:", error)
       setIsSubmitting(false)
-      showNotification("Failed to register donor. Please check all fields.", "error")
+      const errorMsg = error.response?.data?.detail || "Failed to register donor. Please check all fields."
+      showNotification(errorMsg, "error")
     }
   }
 
@@ -110,7 +111,6 @@ export default function Donors() {
   filteredDonors.sort((a, b) => {
     if (sortBy === "Newest") return b.id - a.id
     if (sortBy === "Oldest") return a.id - b.id
-    if (sortBy === "Total Donations (High-Low)") return b.total - a.total
     return 0
   })
 
@@ -146,7 +146,6 @@ export default function Donors() {
           <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="min-w-[160px]">
             <option value="Newest">Newest</option>
             <option value="Oldest">Oldest</option>
-            <option value="Total Donations (High-Low)">Most Donations</option>
           </Select>
         </div>
       </div>
@@ -158,7 +157,6 @@ export default function Donors() {
             <TableHead>Donor Name</TableHead>
             <TableHead>Blood Group</TableHead>
             <TableHead>Last Donation</TableHead>
-            <TableHead>Total Donations</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -172,7 +170,6 @@ export default function Donors() {
                 <Badge variant="outline" className="bg-destructive/10 text-destructive">{donor.bloodGroup}</Badge>
               </TableCell>
               <TableCell>{donor.lastDonation}</TableCell>
-              <TableCell>{donor.total}</TableCell>
               <TableCell>
                 <Badge variant={donor.status === "Eligible" ? "success" : "warning"}>
                   {donor.status}
@@ -313,10 +310,6 @@ export default function Donors() {
                 <Badge variant="outline" className="bg-destructive/10 text-destructive">{selectedDonor.bloodGroup}</Badge>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Donations</p>
-                <p className="font-medium">{selectedDonor.total}</p>
-              </div>
-              <div>
                 <p className="text-sm font-medium text-muted-foreground">Last Donation</p>
                 <p className="font-medium">{selectedDonor.lastDonation}</p>
               </div>
@@ -325,6 +318,14 @@ export default function Donors() {
                 <Badge variant={selectedDonor.status === "Eligible" ? "success" : "warning"}>{selectedDonor.status}</Badge>
               </div>
             </div>
+            
+            {selectedDonor.medicalNotes && selectedDonor.medicalNotes !== "None" && (
+              <div className="pt-4 border-t">
+                <p className="text-sm font-medium text-muted-foreground">Medical Notes & Diseases</p>
+                <p className="font-medium text-sm mt-1 text-destructive bg-destructive/5 p-3 rounded-md border border-destructive/20">{selectedDonor.medicalNotes}</p>
+              </div>
+            )}
+            
             <div className="flex justify-end pt-4 border-t">
               <Button onClick={() => setIsViewModalOpen(false)}>Close</Button>
             </div>
