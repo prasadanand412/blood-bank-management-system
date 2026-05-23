@@ -13,6 +13,7 @@ export default function Donors() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [notification, setNotification] = useState<{message: string, type: 'error' | 'success'} | null>(null)
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
   const [selectedDonor, setSelectedDonor] = useState<any>(null)
   const [statusFilter, setStatusFilter] = useState("All")
@@ -49,6 +50,11 @@ export default function Donors() {
     donationDateTime: "",
   })
 
+  const showNotification = (message: string, type: 'error' | 'success') => {
+    setNotification({ message, type })
+    setTimeout(() => setNotification(null), 4000)
+  }
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
@@ -58,6 +64,7 @@ export default function Donors() {
       await fetchDonors()
       setIsSubmitting(false)
       setIsModalOpen(false)
+      showNotification("Donor registered successfully!", "success")
       
       // Reset Form
       setFormData({
@@ -67,6 +74,7 @@ export default function Donors() {
     } catch (error) {
       console.error("Error registering donor:", error)
       setIsSubmitting(false)
+      showNotification("Failed to register donor. Please check all fields.", "error")
     }
   }
 
@@ -74,9 +82,10 @@ export default function Donors() {
     try {
       await axios.delete(`http://127.0.0.1:8000/api/v1/donors/${id}`)
       setDonors(donors.filter(d => d.id !== id))
+      showNotification("Donor deleted successfully!", "success")
     } catch (error) {
       console.error("Error deleting donor:", error)
-      alert("Cannot delete this donor because they have existing donations or appointments tied to them.")
+      showNotification("Cannot delete this donor because they have existing donations or appointments tied to them.", "error")
     }
   }
 
@@ -284,6 +293,23 @@ export default function Donors() {
           </div>
         )}
       </Modal>
+
+      {/* Floating Toast Notification */}
+      {notification && (
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl transition-all duration-300 animate-in slide-in-from-bottom-5 ${notification.type === 'error' ? 'bg-destructive text-destructive-foreground' : 'bg-green-600 text-white'}`}>
+          <div className={`flex h-8 w-8 items-center justify-center rounded-full bg-white/20`}>
+            {notification.type === 'error' ? (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+            )}
+          </div>
+          <div>
+            <h4 className="font-bold">{notification.type === 'error' ? 'Action Failed' : 'Success'}</h4>
+            <p className="text-sm opacity-90">{notification.message}</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

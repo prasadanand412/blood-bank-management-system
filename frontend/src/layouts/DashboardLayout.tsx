@@ -1,20 +1,23 @@
 import { Outlet, Link, useLocation } from "react-router-dom"
-import { Activity, LayoutDashboard, Users, Droplet, FileText, Settings, LogOut, Bell } from "lucide-react"
+import { Activity, LayoutDashboard, Users, Droplet, FileText, Settings, LogOut, Bell, AlertTriangle } from "lucide-react"
 import { useState, useEffect } from "react"
 import axios from "axios"
 
 export default function DashboardLayout() {
   const location = useLocation()
   const [alertCount, setAlertCount] = useState(0)
+  const [stats, setStats] = useState<any>(null)
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
 
   useEffect(() => {
     // Fetch live dashboard stats to populate the alert count (low stock + pending emergency requests)
     const fetchAlerts = async () => {
       try {
         const response = await axios.get("http://127.0.0.1:8000/api/v1/dashboard/stats")
-        const stats = response.data
-        // Calculate alerts: pending emergency requests + expiring soon units
-        setAlertCount(stats.pending_requests + stats.expiring_soon)
+        const newStats = response.data
+        setStats(newStats)
+        // Calculate alerts: pending requests + expiring soon units
+        setAlertCount(newStats.pending_requests + newStats.expiring_soon)
       } catch (error) {
         console.error("Failed to fetch alerts", error)
       }
@@ -80,14 +83,49 @@ export default function DashboardLayout() {
         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-6 lg:h-[60px]">
           <div className="flex-1 flex justify-end">
             <div className="flex items-center gap-4">
-              <button className="relative text-muted-foreground hover:text-foreground">
-                <Bell className="h-5 w-5" />
-                {alertCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] text-destructive-foreground font-bold">
-                    {alertCount}
-                  </span>
+              <div className="relative">
+                <button 
+                  className="relative text-muted-foreground hover:text-foreground p-1"
+                  onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                >
+                  <Bell className="h-5 w-5" />
+                  {alertCount > 0 && (
+                    <span className="absolute top-0 right-0 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] text-destructive-foreground font-bold">
+                      {alertCount}
+                    </span>
+                  )}
+                </button>
+                
+                {isNotificationsOpen && (
+                  <div className="absolute right-0 mt-2 w-80 rounded-md border bg-background p-4 shadow-lg flex flex-col gap-3 z-50 animate-in slide-in-from-top-2">
+                    <h4 className="font-semibold text-sm border-b pb-2">Notifications</h4>
+                    {alertCount === 0 ? (
+                      <p className="text-sm text-muted-foreground py-4 text-center">No new notifications</p>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        {stats?.pending_requests > 0 && (
+                          <div className="flex items-start gap-3 rounded-lg border p-3 bg-muted/20">
+                            <Activity className="h-5 w-5 text-primary mt-0.5" />
+                            <div className="flex flex-col">
+                              <span className="text-sm font-medium">Pending Requests</span>
+                              <span className="text-xs text-muted-foreground">You have {stats.pending_requests} request(s) awaiting approval.</span>
+                            </div>
+                          </div>
+                        )}
+                        {stats?.expiring_soon > 0 && (
+                          <div className="flex items-start gap-3 rounded-lg border p-3 bg-amber-500/10 border-amber-500/20">
+                            <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5" />
+                            <div className="flex flex-col">
+                              <span className="text-sm font-medium text-amber-600">Expiring Soon</span>
+                              <span className="text-xs text-muted-foreground">You have {stats.expiring_soon} unit(s) expiring within 7 days.</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
-              </button>
+              </div>
               <div className="flex items-center gap-2">
                 <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
                   AD

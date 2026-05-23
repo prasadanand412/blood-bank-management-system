@@ -43,8 +43,8 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
         result2 = db.execute(text("SELECT SUM(total_units) FROM available_blood_stock_view")).scalar()
         available_blood_units = result2 if result2 else 0
         
-        # Get pending emergency requests
-        result3 = db.execute(text("SELECT COUNT(*) FROM emergency_requests_view")).scalar()
+        # Get all pending requests
+        result3 = db.execute(text("SELECT COUNT(*) FROM blood_requests WHERE status = 'PENDING'")).scalar()
         pending_requests = result3 if result3 else 0
         
         # Get expiring units from view
