@@ -16,7 +16,7 @@ export default function Inventory() {
   
   const [statusFilter, setStatusFilter] = useState("All")
   const [bloodGroupFilter, setBloodGroupFilter] = useState("All")
-  const [sortBy, setSortBy] = useState("Expiry Date")
+  const [sortBy, setSortBy] = useState("Expiry Date (Soonest)")
 
   const [units, setUnits] = useState<any[]>([])
 
@@ -55,9 +55,16 @@ export default function Inventory() {
   }
 
   filteredUnits.sort((a, b) => {
-    if (sortBy === "Expiry Date") return new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime()
-    if (sortBy === "Collection Date") return new Date(b.collectionDate).getTime() - new Date(a.collectionDate).getTime()
-    if (sortBy === "Quantity (High-Low)") return b.quantity - a.quantity
+    const expiryDiff = new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime()
+    const collectionDiff = new Date(b.collectionDate).getTime() - new Date(a.collectionDate).getTime()
+    const quantityDiff = b.quantity - a.quantity
+
+    if (sortBy === "Expiry Date (Soonest)") return expiryDiff !== 0 ? expiryDiff : a.id - b.id
+    if (sortBy === "Expiry Date (Latest)") return expiryDiff !== 0 ? -expiryDiff : b.id - a.id
+    if (sortBy === "Collection Date (Newest)") return collectionDiff !== 0 ? collectionDiff : b.id - a.id
+    if (sortBy === "Collection Date (Oldest)") return collectionDiff !== 0 ? -collectionDiff : a.id - b.id
+    if (sortBy === "Quantity (High-Low)") return quantityDiff !== 0 ? quantityDiff : b.id - a.id
+    if (sortBy === "Quantity (Low-High)") return quantityDiff !== 0 ? -quantityDiff : a.id - b.id
     return 0
   })
 
@@ -126,9 +133,12 @@ export default function Inventory() {
             ))}
           </Select>
           <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="min-w-[200px]">
-            <option value="Expiry Date">Expiry Date (Soonest)</option>
-            <option value="Collection Date">Collection Date (Newest)</option>
+            <option value="Expiry Date (Soonest)">Expiry Date (Soonest)</option>
+            <option value="Expiry Date (Latest)">Expiry Date (Latest)</option>
+            <option value="Collection Date (Newest)">Collection Date (Newest)</option>
+            <option value="Collection Date (Oldest)">Collection Date (Oldest)</option>
             <option value="Quantity (High-Low)">Quantity (High-Low)</option>
+            <option value="Quantity (Low-High)">Quantity (Low-High)</option>
           </Select>
         </div>
       </div>

@@ -17,6 +17,7 @@ export default function Donors() {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
   const [selectedDonor, setSelectedDonor] = useState<any>(null)
   const [statusFilter, setStatusFilter] = useState("All")
+  const [bloodGroupFilter, setBloodGroupFilter] = useState("All")
   const [sortBy, setSortBy] = useState("Newest")
   
   // Fetch Donors from API
@@ -107,6 +108,9 @@ export default function Donors() {
   if (statusFilter !== "All") {
     filteredDonors = filteredDonors.filter(d => d.status === statusFilter)
   }
+  if (bloodGroupFilter !== "All") {
+    filteredDonors = filteredDonors.filter(d => d.bloodGroup === bloodGroupFilter)
+  }
 
   filteredDonors.sort((a, b) => {
     if (sortBy === "Newest") return b.id - a.id
@@ -142,6 +146,12 @@ export default function Donors() {
             <option value="All">All Statuses</option>
             <option value="Eligible">Eligible</option>
             <option value="Deferred">Deferred</option>
+          </Select>
+          <Select value={bloodGroupFilter} onChange={(e) => setBloodGroupFilter(e.target.value)} className="min-w-[160px]">
+            <option value="All">All Blood Groups</option>
+            {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown'].map(bg => (
+              <option key={bg} value={bg}>{bg}</option>
+            ))}
           </Select>
           <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="min-w-[160px]">
             <option value="Newest">Newest</option>

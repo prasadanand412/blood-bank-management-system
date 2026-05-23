@@ -29,6 +29,7 @@ class UserOut(UserBase):
 # Dashboard Stats (Custom Schema)
 class DashboardStats(BaseModel):
     total_donors: int
+    donor_growth: str
     available_blood_units: int
     available_blood_ml: int
     pending_requests: int

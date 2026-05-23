@@ -19,6 +19,7 @@ const initialData = [
 export default function Dashboard() {
   const [stats, setStats] = useState({
     total_donors: 0,
+    donor_growth: "+0%",
     available_blood_units: 0,
     available_blood_ml: 0,
     pending_requests: 0,
@@ -77,7 +78,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.total_donors.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">+4% from last month</p>
+            <p className="text-xs text-muted-foreground">{stats.donor_growth} from last month</p>
           </CardContent>
         </Card>
         

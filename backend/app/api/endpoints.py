@@ -39,6 +39,16 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
         result = db.execute(text("SELECT COUNT(*) FROM active_donors_view")).scalar()
         total_donors = result if result else 0
         
+        # Calculate donor growth from last month
+        current_month_donors = db.execute(text("SELECT COUNT(*) FROM donors d JOIN users u ON d.user_id = u.id WHERE date_trunc('month', u.created_at) = date_trunc('month', CURRENT_DATE)")).scalar() or 0
+        last_month_donors = db.execute(text("SELECT COUNT(*) FROM donors d JOIN users u ON d.user_id = u.id WHERE date_trunc('month', u.created_at) = date_trunc('month', CURRENT_DATE - interval '1 month')")).scalar() or 0
+        
+        if last_month_donors == 0:
+            donor_growth = f"+{current_month_donors * 100}%" if current_month_donors > 0 else "0%"
+        else:
+            growth_pct = ((current_month_donors - last_month_donors) / last_month_donors) * 100
+            donor_growth = f"+{growth_pct:.0f}%" if growth_pct >= 0 else f"{growth_pct:.0f}%"
+        
         # Get total available blood units from view
         result2 = db.execute(text("SELECT SUM(total_units) FROM available_blood_stock_view")).scalar()
         available_blood_units = result2 if result2 else 0
@@ -65,6 +75,7 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
         
         return DashboardStats(
             total_donors=total_donors,
+            donor_growth=donor_growth,
             available_blood_units=available_blood_units,
             available_blood_ml=available_blood_ml,
             pending_requests=pending_requests,
@@ -74,7 +85,7 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
         )
     except Exception as e:
         # Fallback if views are not yet generated in DB
-        return DashboardStats(total_donors=0, available_blood_units=0, available_blood_ml=0, pending_requests=0, expiring_soon=0, accepted_requests=0, fulfilled_requests=0)
+        return DashboardStats(total_donors=0, donor_growth="0%", available_blood_units=0, available_blood_ml=0, pending_requests=0, expiring_soon=0, accepted_requests=0, fulfilled_requests=0)
 
 @router.get("/dashboard/recent-requests")
 def get_recent_requests(db: Session = Depends(get_db)):

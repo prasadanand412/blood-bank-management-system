@@ -112,9 +112,12 @@ export default function Requests() {
   }
 
   filteredRequests.sort((a, b) => {
+    const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime()
+    
     if (sortBy === "Newest") return b.id - a.id
     if (sortBy === "Oldest") return a.id - b.id
-    if (sortBy === "Required Date") return new Date(a.date).getTime() - new Date(b.date).getTime()
+    if (sortBy === "Required Date (Soonest)") return dateDiff !== 0 ? dateDiff : a.id - b.id
+    if (sortBy === "Required Date (Latest)") return dateDiff !== 0 ? -dateDiff : b.id - a.id
     return 0
   })
 
@@ -156,10 +159,11 @@ export default function Requests() {
             <option value="Medium">Medium</option>
             <option value="Low">Low</option>
           </Select>
-          <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="min-w-[160px]">
+          <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="min-w-[180px]">
             <option value="Newest">Newest Request</option>
             <option value="Oldest">Oldest Request</option>
-            <option value="Required Date">Urgency (Date)</option>
+            <option value="Required Date (Soonest)">Urgency (Soonest)</option>
+            <option value="Required Date (Latest)">Urgency (Latest)</option>
           </Select>
         </div>
       </div>
