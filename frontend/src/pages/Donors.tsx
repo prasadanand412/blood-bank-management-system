@@ -156,7 +156,8 @@ export default function Donors() {
             <TableHead>ID</TableHead>
             <TableHead>Donor Name</TableHead>
             <TableHead>Blood Group</TableHead>
-            <TableHead>Last Donation</TableHead>
+            <TableHead>Donation Date & Time</TableHead>
+            <TableHead>Time to Expiry</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -169,7 +170,12 @@ export default function Donors() {
               <TableCell>
                 <Badge variant="outline" className="bg-destructive/10 text-destructive">{donor.bloodGroup}</Badge>
               </TableCell>
-              <TableCell>{donor.lastDonation}</TableCell>
+              <TableCell>{donor.donationDateTime || donor.lastDonation}</TableCell>
+              <TableCell>
+                <span className={donor.timeToExpiry === 'Expired' ? 'text-destructive font-medium' : ''}>
+                  {donor.timeToExpiry}
+                </span>
+              </TableCell>
               <TableCell>
                 <Badge variant={donor.status === "Eligible" ? "success" : "warning"}>
                   {donor.status}
@@ -310,8 +316,14 @@ export default function Donors() {
                 <Badge variant="outline" className="bg-destructive/10 text-destructive">{selectedDonor.bloodGroup}</Badge>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Last Donation</p>
-                <p className="font-medium">{selectedDonor.lastDonation}</p>
+                <p className="text-sm font-medium text-muted-foreground">Donation Date & Time</p>
+                <p className="font-medium">{selectedDonor.donationDateTime || selectedDonor.lastDonation}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Time to Expiry</p>
+                <p className={`font-medium ${selectedDonor.timeToExpiry === 'Expired' ? 'text-destructive' : ''}`}>
+                  {selectedDonor.timeToExpiry}
+                </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Status</p>

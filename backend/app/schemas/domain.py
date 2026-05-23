@@ -80,8 +80,8 @@ class DonorOut(BaseModel):
     id: int
     name: str
     bloodGroup: str
-    lastDonation: Optional[str] = None
-    total: int
+    donationDateTime: Optional[str] = None
+    timeToExpiry: Optional[str] = None
     status: str
     medicalNotes: Optional[str] = None
 

@@ -123,18 +123,33 @@ def update_inventory_unit(unit_id: int, request: BloodInventoryUpdate, db: Sessi
 
 @router.get("/donors", response_model=List[DonorOut])
 def get_donors(db: Session = Depends(get_db)):
+    from datetime import datetime
     donors = db.query(Donor).order_by(Donor.id.desc()).all()
     result = []
     for d in donors:
         latest_donation = db.query(Donation).filter(Donation.donor_id == d.id).order_by(Donation.donation_date.desc()).first()
         notes = latest_donation.medical_notes if latest_donation and latest_donation.medical_notes else "None"
         
+        donation_dt_str = "Never"
+        time_to_expiry = "N/A"
+        if latest_donation and latest_donation.donation_date:
+            donation_dt_str = latest_donation.donation_date.strftime("%Y-%m-%d %H:%M")
+            inventory = db.query(BloodInventory).filter(BloodInventory.donation_id == latest_donation.id).first()
+            if inventory and inventory.expiry_date:
+                delta = inventory.expiry_date - datetime.now().date()
+                if delta.days < 0:
+                    time_to_expiry = "Expired"
+                elif delta.days == 0:
+                    time_to_expiry = "Expires today"
+                else:
+                    time_to_expiry = f"{delta.days} days"
+        
         result.append(DonorOut(
             id=d.id,
             name=f"{d.first_name} {d.last_name}",
             bloodGroup=d.blood_group,
-            lastDonation=str(d.last_donation_date) if d.last_donation_date else "Never",
-            total=d.total_donations,
+            donationDateTime=donation_dt_str,
+            timeToExpiry=time_to_expiry,
             status="Eligible" if d.is_eligible else "Deferred",
             medicalNotes=notes
         ))
@@ -206,8 +221,8 @@ def register_donor_and_donation(request: DonorCreate, db: Session = Depends(get_
         id=new_donor.id,
         name=f"{new_donor.first_name} {new_donor.last_name}",
         bloodGroup=new_donor.blood_group,
-        lastDonation=str(new_donor.last_donation_date),
-        total=new_donor.total_donations,
+        donationDateTime=request.donationDateTime.strftime("%Y-%m-%d %H:%M"),
+        timeToExpiry="35 days",
         status="Eligible",
         medicalNotes=request.medicalNotes or "None"
     )
