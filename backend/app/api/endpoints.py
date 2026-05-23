@@ -43,6 +43,10 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
         result2 = db.execute(text("SELECT SUM(total_units) FROM available_blood_stock_view")).scalar()
         available_blood_units = result2 if result2 else 0
         
+        # Get total available blood ml from view
+        result_ml = db.execute(text("SELECT SUM(total_ml) FROM available_blood_stock_view")).scalar()
+        available_blood_ml = result_ml if result_ml else 0
+        
         # Get all pending requests
         result3 = db.execute(text("SELECT COUNT(*) FROM blood_requests WHERE status = 'PENDING'")).scalar()
         pending_requests = result3 if result3 else 0
@@ -62,6 +66,7 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
         return DashboardStats(
             total_donors=total_donors,
             available_blood_units=available_blood_units,
+            available_blood_ml=available_blood_ml,
             pending_requests=pending_requests,
             expiring_soon=expiring_soon,
             accepted_requests=accepted_requests,
@@ -69,7 +74,7 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
         )
     except Exception as e:
         # Fallback if views are not yet generated in DB
-        return DashboardStats(total_donors=0, available_blood_units=0, pending_requests=0, expiring_soon=0, accepted_requests=0, fulfilled_requests=0)
+        return DashboardStats(total_donors=0, available_blood_units=0, available_blood_ml=0, pending_requests=0, expiring_soon=0, accepted_requests=0, fulfilled_requests=0)
 
 @router.get("/dashboard/recent-requests")
 def get_recent_requests(db: Session = Depends(get_db)):

@@ -1,24 +1,26 @@
 import { useEffect, useState } from "react"
 import axios from "axios"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Select } from "@/components/ui/select"
 import { Users, Droplet, Activity, AlertTriangle } from "lucide-react"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts"
 
 const initialData = [
-  { name: "A+", amount: 120 },
-  { name: "A-", amount: 45 },
-  { name: "B+", amount: 150 },
-  { name: "B-", amount: 30 },
-  { name: "AB+", amount: 80 },
-  { name: "AB-", amount: 20 },
-  { name: "O+", amount: 200 },
-  { name: "O-", amount: 60 },
+  { name: "A+", amount: 120, volume: 54000 },
+  { name: "A-", amount: 45, volume: 20250 },
+  { name: "B+", amount: 150, volume: 67500 },
+  { name: "B-", amount: 30, volume: 13500 },
+  { name: "AB+", amount: 80, volume: 36000 },
+  { name: "AB-", amount: 20, volume: 9000 },
+  { name: "O+", amount: 200, volume: 90000 },
+  { name: "O-", amount: 60, volume: 27000 },
 ]
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
     total_donors: 0,
     available_blood_units: 0,
+    available_blood_ml: 0,
     pending_requests: 0,
     expiring_soon: 0,
     accepted_requests: 0,
@@ -26,6 +28,7 @@ export default function Dashboard() {
   })
   const [chartData, setChartData] = useState<any[]>([])
   const [recentRequests, setRecentRequests] = useState<any[]>([])
+  const [chartMetric, setChartMetric] = useState<"units" | "ml">("units")
 
   useEffect(() => {
     const fetchData = async () => {
@@ -36,7 +39,8 @@ export default function Dashboard() {
         const stockRes = await axios.get("http://127.0.0.1:8000/api/v1/inventory/stock")
         const formattedStock = stockRes.data.map((item: any) => ({
           name: item.blood_group,
-          amount: item.total_units
+          amount: item.total_units,
+          volume: item.total_ml
         }))
         setChartData(formattedStock.length > 0 ? formattedStock : initialData)
         
@@ -79,12 +83,20 @@ export default function Dashboard() {
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Available Units (ml)</CardTitle>
+            <CardTitle className="text-sm font-medium">Available Inventory</CardTitle>
             <Droplet className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.available_blood_units.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Safe stock level maintained</p>
+            <div className="grid grid-cols-2 gap-4 mt-2">
+              <div>
+                <div className="text-2xl font-bold text-destructive">{stats.available_blood_units.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">Units available</p>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-destructive">{stats.available_blood_ml.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">mL available</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
         
@@ -134,9 +146,19 @@ export default function Dashboard() {
 
       <div className="grid gap-4 md:grid-cols-7 lg:grid-cols-7">
         <Card className="col-span-4">
-          <CardHeader>
-            <CardTitle>Blood Inventory Status</CardTitle>
-            <CardDescription>Available units grouped by blood type.</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div>
+              <CardTitle>Blood Inventory Status</CardTitle>
+              <CardDescription>Available stock grouped by blood type.</CardDescription>
+            </div>
+            <select 
+              className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              value={chartMetric} 
+              onChange={(e) => setChartMetric(e.target.value as "units" | "ml")}
+            >
+              <option value="units">In Units</option>
+              <option value="ml">In mL</option>
+            </select>
           </CardHeader>
           <CardContent className="pl-2">
             <div className="h-[300px]">
@@ -160,8 +182,15 @@ export default function Dashboard() {
                   <Tooltip 
                     cursor={{ fill: 'hsl(var(--muted))' }}
                     contentStyle={{ borderRadius: '8px', border: '1px solid hsl(var(--border))', backgroundColor: 'hsl(var(--background))' }}
+                    formatter={(value: any, name: any, props: any) => {
+                      if (chartMetric === "units") {
+                        return [`${value} units (${props.payload.volume.toLocaleString()} mL)`, "Available"];
+                      } else {
+                        return [`${value.toLocaleString()} mL (${props.payload.amount} units)`, "Available"];
+                      }
+                    }}
                   />
-                  <Bar dataKey="amount" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey={chartMetric === "units" ? "amount" : "volume"} fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

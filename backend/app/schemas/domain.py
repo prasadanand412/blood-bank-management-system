@@ -30,6 +30,7 @@ class UserOut(UserBase):
 class DashboardStats(BaseModel):
     total_donors: int
     available_blood_units: int
+    available_blood_ml: int
     pending_requests: int
     expiring_soon: int
     accepted_requests: int
