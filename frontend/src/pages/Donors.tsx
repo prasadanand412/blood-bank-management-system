@@ -49,6 +49,9 @@ export default function Donors() {
     quantity: 450,
     donationDateTime: "",
   })
+  
+  const [diseaseState, setDiseaseState] = useState("None")
+  const [medicalNotes, setMedicalNotes] = useState("")
 
   const showNotification = (message: string, type: 'error' | 'success') => {
     setNotification({ message, type })
@@ -60,7 +63,14 @@ export default function Donors() {
     setIsSubmitting(true)
     
     try {
-      await axios.post("http://127.0.0.1:8000/api/v1/donors", formData)
+      const submissionData = {
+        ...formData,
+        medicalNotes: diseaseState !== "None" 
+          ? (diseaseState === "Other" ? medicalNotes : `${diseaseState}${medicalNotes ? ' - ' + medicalNotes : ''}`)
+          : (medicalNotes || "None")
+      }
+      
+      await axios.post("http://127.0.0.1:8000/api/v1/donors", submissionData)
       await fetchDonors()
       setIsSubmitting(false)
       setIsModalOpen(false)
@@ -71,6 +81,8 @@ export default function Donors() {
         firstName: "", lastName: "", dob: "", gender: "Male", bloodGroup: "A+",
         contact: "", address: "", bloodPressure: "", hemoglobin: "", quantity: 450, donationDateTime: "",
       })
+      setDiseaseState("None")
+      setMedicalNotes("")
     } catch (error) {
       console.error("Error registering donor:", error)
       setIsSubmitting(false)
@@ -247,6 +259,32 @@ export default function Donors() {
               <label className="text-sm font-medium">Quantity (ml)</label>
               <Input type="number" required value={formData.quantity} onChange={e => setFormData({...formData, quantity: parseInt(e.target.value)})} />
             </div>
+          </div>
+          
+          <div className="space-y-4 border-t pt-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Any Disease?</label>
+              <Select value={diseaseState} onChange={e => setDiseaseState(e.target.value)}>
+                <option value="None">None</option>
+                <option value="Diabetes">Diabetes</option>
+                <option value="Heart Disease">Heart Disease</option>
+                <option value="Sickle Cell">Sickle Cell</option>
+                <option value="Other">Other</option>
+              </Select>
+            </div>
+            
+            {(diseaseState === "Other" || diseaseState !== "None") && (
+              <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                <label className="text-sm font-medium">Medical Notes</label>
+                <Textarea 
+                  rows={2} 
+                  value={medicalNotes} 
+                  onChange={e => setMedicalNotes(e.target.value)} 
+                  placeholder={diseaseState === "Other" ? "Please specify..." : "Additional details (optional)..."} 
+                  required={diseaseState === "Other"}
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-4">

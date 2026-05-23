@@ -74,6 +74,7 @@ class DonorCreate(BaseModel):
     hemoglobin: float
     quantity: int
     donationDateTime: datetime
+    medicalNotes: Optional[str] = None
 
 class DonorOut(BaseModel):
     id: int

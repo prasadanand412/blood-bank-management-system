@@ -174,6 +174,7 @@ def register_donor_and_donation(request: DonorCreate, db: Session = Depends(get_
         status="PENDING",
         blood_pressure=request.bloodPressure,
         hemoglobin_level=request.hemoglobin,
+        medical_notes=request.medicalNotes,
         handled_by=1 # Assuming admin user ID 1
     )
     db.add(new_donation)
