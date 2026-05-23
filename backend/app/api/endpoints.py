@@ -137,17 +137,20 @@ def get_donors(db: Session = Depends(get_db)):
         
         donation_dt_str = "Never"
         time_to_expiry = "N/A"
+        unit_number = "N/A"
         if latest_donation and latest_donation.donation_date:
             donation_dt_str = latest_donation.donation_date.strftime("%Y-%m-%d %H:%M")
             inventory = db.query(BloodInventory).filter(BloodInventory.donation_id == latest_donation.id).first()
-            if inventory and inventory.expiry_date:
-                delta = inventory.expiry_date - datetime.now().date()
-                if delta.days < 0:
-                    time_to_expiry = "Expired"
-                elif delta.days == 0:
-                    time_to_expiry = "Expires today"
-                else:
-                    time_to_expiry = f"{delta.days} days"
+            if inventory:
+                unit_number = inventory.unit_number
+                if inventory.expiry_date:
+                    delta = inventory.expiry_date - datetime.now().date()
+                    if delta.days < 0:
+                        time_to_expiry = "Expired"
+                    elif delta.days == 0:
+                        time_to_expiry = "Expires today"
+                    else:
+                        time_to_expiry = f"{delta.days} days"
         
         result.append(DonorOut(
             id=d.id,
@@ -155,6 +158,7 @@ def get_donors(db: Session = Depends(get_db)):
             bloodGroup=d.blood_group,
             donationDateTime=donation_dt_str,
             timeToExpiry=time_to_expiry,
+            unitNumber=unit_number,
             status="Eligible" if d.is_eligible else "Deferred",
             medicalNotes=notes
         ))
@@ -228,6 +232,7 @@ def register_donor_and_donation(request: DonorCreate, db: Session = Depends(get_
         bloodGroup=new_donor.blood_group,
         donationDateTime=request.donationDateTime.strftime("%Y-%m-%d %H:%M"),
         timeToExpiry="35 days",
+        unitNumber=unit_number,
         status="Eligible",
         medicalNotes=request.medicalNotes or "None"
     )

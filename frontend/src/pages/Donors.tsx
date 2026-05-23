@@ -316,6 +316,10 @@ export default function Donors() {
                 <Badge variant="outline" className="bg-destructive/10 text-destructive">{selectedDonor.bloodGroup}</Badge>
               </div>
               <div>
+                <p className="text-sm font-medium text-muted-foreground">Blood Unit Number</p>
+                <p className="font-mono font-medium">{selectedDonor.unitNumber || "N/A"}</p>
+              </div>
+              <div>
                 <p className="text-sm font-medium text-muted-foreground">Donation Date & Time</p>
                 <p className="font-medium">{selectedDonor.donationDateTime || selectedDonor.lastDonation}</p>
               </div>

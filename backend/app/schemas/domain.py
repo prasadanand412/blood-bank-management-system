@@ -83,6 +83,7 @@ class DonorOut(BaseModel):
     bloodGroup: str
     donationDateTime: Optional[str] = None
     timeToExpiry: Optional[str] = None
+    unitNumber: Optional[str] = None
     status: str
     medicalNotes: Optional[str] = None
 
